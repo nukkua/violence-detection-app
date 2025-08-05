@@ -17,7 +17,7 @@ import {
     AudioModule,
     RecordingPresets,
     setAudioModeAsync,
-    type InterruptionMode,
+
 } from 'expo-audio';
 
 import { useStorageState } from '@/hooks/useStorageState';
