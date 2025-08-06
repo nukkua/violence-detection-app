@@ -109,12 +109,10 @@ export default function GuardianAudioRecorder() {
                 try {
                     currentPlayerRef.current.pause();
                 } catch (error) {
-                    console.log('Player already stopped');
                 }
                 try {
                     currentPlayerRef.current.release();
                 } catch (error) {
-                    console.log('Player already released');
                 }
                 currentPlayerRef.current = null;
             }
@@ -270,12 +268,10 @@ export default function GuardianAudioRecorder() {
                 try {
                     await currentPlayerRef.current.pause();
                 } catch (error) {
-                    console.log('Player already stopped or released');
                 } finally {
                     try {
                         currentPlayerRef.current.release();
                     } catch (releaseError) {
-                        console.log('Player already released');
                     }
                     currentPlayerRef.current = null;
                     setCurrentlyPlaying(null);
@@ -350,7 +346,6 @@ export default function GuardianAudioRecorder() {
             if (currentlyPlaying === recordingItem.id && currentPlayerRef.current) {
                 if (isPlaybackPaused) {
                     // RESUME: Reanudar desde donde se pausó
-                    console.log("Resumiendo audio desde posición:", pausedPositionRef.current);
                     await currentPlayerRef.current.play();
                     setIsPlaybackPaused(false);
 
@@ -384,7 +379,6 @@ export default function GuardianAudioRecorder() {
 
                 } else {
                     // PAUSE: Pausar el audio realmente
-                    console.log("Pausando audio en posición:", currentPlaybackTime);
                     await currentPlayerRef.current.pause();
                     setIsPlaybackPaused(true);
                     pausedPositionRef.current = currentPlaybackTime;
@@ -399,7 +393,6 @@ export default function GuardianAudioRecorder() {
 
             // CASO 2: Detener cualquier otro audio que esté reproduciéndose
             if (currentPlayerRef.current) {
-                console.log("Deteniendo audio anterior");
                 currentPlayerRef.current.pause();
                 currentPlayerRef.current.release();
                 currentPlayerRef.current = null;
@@ -417,7 +410,6 @@ export default function GuardianAudioRecorder() {
             await setPlaybackMode();
 
             // CASO 3: Crear nuevo reproductor y empezar desde el inicio
-            console.log("Iniciando nueva reproducción");
             const { createAudioPlayer } = await import('expo-audio');
             const player = createAudioPlayer({ uri: recordingItem.uri });
 
@@ -446,7 +438,6 @@ export default function GuardianAudioRecorder() {
                         try {
                             currentPlayerRef.current.release();
                         } catch (error) {
-                            console.log('Player already released');
                         }
                         currentPlayerRef.current = null;
                     }
