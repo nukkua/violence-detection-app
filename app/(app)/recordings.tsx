@@ -11,6 +11,7 @@ import {
     Dimensions,
     Animated,
 } from 'react-native';
+
 import {
     useAudioRecorder,
     useAudioRecorderState,
@@ -40,6 +41,7 @@ export default function GuardianAudioRecorder() {
     const [recordingTime, setRecordingTime] = useState(0);
     const [playbackProgress, setPlaybackProgress] = useState(0);
     const [currentPlaybackTime, setCurrentPlaybackTime] = useState(0);
+    const [isPlaybackPaused, setIsPlaybackPaused] = useState(false);
 
     // ========================================
     // REFS
@@ -48,6 +50,8 @@ export default function GuardianAudioRecorder() {
     const currentPlayerRef = useRef(null);
     const playbackCheckIntervalRef = useRef(null);
     const progressIntervalRef = useRef(null);
+    const pausedPositionRef = useRef(0);
+    const playbackStartTimeRef = useRef(0);
 
     // ========================================
     // AUDIO SETUP
@@ -242,6 +246,8 @@ export default function GuardianAudioRecorder() {
             await setAudioModeAsync({
                 playsInSilentMode: true,
                 allowsRecording: false,
+                interruptionMode: 'duckOthers',
+                shouldPlayInBackground: true,
             });
         } catch (error) {
             console.error('Error setting playback mode:', error);
@@ -273,6 +279,7 @@ export default function GuardianAudioRecorder() {
                     }
                     currentPlayerRef.current = null;
                     setCurrentlyPlaying(null);
+                    setIsPlaybackPaused(false);
 
                     if (playbackCheckIntervalRef.current) {
                         clearInterval(playbackCheckIntervalRef.current);
@@ -326,7 +333,6 @@ export default function GuardianAudioRecorder() {
                 setRecordings(updatedRecordings);
                 await saveRecordings(updatedRecordings);
 
-                Alert.alert('¡Éxito!', 'Grabación guardada correctamente');
             }
         } catch (error) {
             console.error('Error stopping recording:', error);
@@ -335,31 +341,65 @@ export default function GuardianAudioRecorder() {
     }, [recorderState.isRecording, audioRecorder, recordings, recordingTime, saveRecordings, setPlaybackMode]);
 
     // ========================================
-    // PLAYBACK FUNCTIONS
+    // ENHANCED PLAYBACK FUNCTIONS
     // ========================================
 
     const playRecording = useCallback(async (recordingItem) => {
         try {
-            // Pause if same recording is playing
+            // CASO 1: Si es la misma grabación y está reproduciendo/pausada, toggle pause/resume
             if (currentlyPlaying === recordingItem.id && currentPlayerRef.current) {
-                currentPlayerRef.current.pause();
-                setCurrentlyPlaying(null);
-                setPlaybackProgress(0);
-                setCurrentPlaybackTime(0);
+                if (isPlaybackPaused) {
+                    // RESUME: Reanudar desde donde se pausó
+                    console.log("Resumiendo audio desde posición:", pausedPositionRef.current);
+                    await currentPlayerRef.current.play();
+                    setIsPlaybackPaused(false);
 
-                if (playbackCheckIntervalRef.current) {
-                    clearInterval(playbackCheckIntervalRef.current);
-                    playbackCheckIntervalRef.current = null;
-                }
-                if (progressIntervalRef.current) {
-                    clearInterval(progressIntervalRef.current);
-                    progressIntervalRef.current = null;
+                    // Reanudar tracking del progreso desde la posición pausada
+                    playbackStartTimeRef.current = Date.now() - (pausedPositionRef.current * 1000);
+
+                    progressIntervalRef.current = setInterval(() => {
+                        const elapsed = (Date.now() - playbackStartTimeRef.current) / 1000;
+                        const progress = Math.min(elapsed / recordingItem.duration, 1);
+
+                        setPlaybackProgress(progress);
+                        setCurrentPlaybackTime(Math.floor(elapsed));
+
+                        if (progress >= 1) {
+                            if (progressIntervalRef.current) {
+                                clearInterval(progressIntervalRef.current);
+                                progressIntervalRef.current = null;
+                            }
+
+                            setTimeout(() => {
+                                if (currentlyPlaying === recordingItem.id) {
+                                    setCurrentlyPlaying(null);
+                                    setPlaybackProgress(0);
+                                    setCurrentPlaybackTime(0);
+                                    setIsPlaybackPaused(false);
+                                    pausedPositionRef.current = 0;
+                                }
+                            }, 100);
+                        }
+                    }, 100);
+
+                } else {
+                    // PAUSE: Pausar el audio realmente
+                    console.log("Pausando audio en posición:", currentPlaybackTime);
+                    await currentPlayerRef.current.pause();
+                    setIsPlaybackPaused(true);
+                    pausedPositionRef.current = currentPlaybackTime;
+
+                    if (progressIntervalRef.current) {
+                        clearInterval(progressIntervalRef.current);
+                        progressIntervalRef.current = null;
+                    }
                 }
                 return;
             }
 
-            // Stop any other audio playing
+            // CASO 2: Detener cualquier otro audio que esté reproduciéndose
             if (currentPlayerRef.current) {
+                console.log("Deteniendo audio anterior");
                 currentPlayerRef.current.pause();
                 currentPlayerRef.current.release();
                 currentPlayerRef.current = null;
@@ -376,7 +416,8 @@ export default function GuardianAudioRecorder() {
 
             await setPlaybackMode();
 
-            // Create new player
+            // CASO 3: Crear nuevo reproductor y empezar desde el inicio
+            console.log("Iniciando nueva reproducción");
             const { createAudioPlayer } = await import('expo-audio');
             const player = createAudioPlayer({ uri: recordingItem.uri });
 
@@ -384,6 +425,8 @@ export default function GuardianAudioRecorder() {
             setCurrentlyPlaying(recordingItem.id);
             setPlaybackProgress(0);
             setCurrentPlaybackTime(0);
+            setIsPlaybackPaused(false);
+            pausedPositionRef.current = 0;
 
             // Setup finish listener
             player.addListener('playbackStatusUpdate', (status) => {
@@ -391,6 +434,8 @@ export default function GuardianAudioRecorder() {
                     setCurrentlyPlaying(null);
                     setPlaybackProgress(0);
                     setCurrentPlaybackTime(0);
+                    setIsPlaybackPaused(false);
+                    pausedPositionRef.current = 0;
 
                     if (progressIntervalRef.current) {
                         clearInterval(progressIntervalRef.current);
@@ -409,9 +454,9 @@ export default function GuardianAudioRecorder() {
             });
 
             // Start progress tracking
-            let startTime = Date.now();
+            playbackStartTimeRef.current = Date.now();
             progressIntervalRef.current = setInterval(() => {
-                const elapsed = (Date.now() - startTime) / 1000;
+                const elapsed = (Date.now() - playbackStartTimeRef.current) / 1000;
                 const progress = Math.min(elapsed / recordingItem.duration, 1);
 
                 setPlaybackProgress(progress);
@@ -428,6 +473,8 @@ export default function GuardianAudioRecorder() {
                             setCurrentlyPlaying(null);
                             setPlaybackProgress(0);
                             setCurrentPlaybackTime(0);
+                            setIsPlaybackPaused(false);
+                            pausedPositionRef.current = 0;
                         }
                     }, 100);
                 }
@@ -441,6 +488,8 @@ export default function GuardianAudioRecorder() {
             setCurrentlyPlaying(null);
             setPlaybackProgress(0);
             setCurrentPlaybackTime(0);
+            setIsPlaybackPaused(false);
+            pausedPositionRef.current = 0;
 
             if (currentPlayerRef.current) {
                 currentPlayerRef.current.release();
@@ -451,7 +500,7 @@ export default function GuardianAudioRecorder() {
                 progressIntervalRef.current = null;
             }
         }
-    }, [currentlyPlaying, setPlaybackMode]);
+    }, [currentlyPlaying, isPlaybackPaused, currentPlaybackTime, setPlaybackMode]);
 
     const deleteRecording = useCallback((recordingToDelete) => {
         Alert.alert(
@@ -464,6 +513,24 @@ export default function GuardianAudioRecorder() {
                     style: 'destructive',
                     onPress: async () => {
                         try {
+                            // Si estamos eliminando la grabación que se está reproduciendo, detenerla
+                            if (currentlyPlaying === recordingToDelete.id) {
+                                if (currentPlayerRef.current) {
+                                    currentPlayerRef.current.pause();
+                                    currentPlayerRef.current.release();
+                                    currentPlayerRef.current = null;
+                                }
+                                if (progressIntervalRef.current) {
+                                    clearInterval(progressIntervalRef.current);
+                                    progressIntervalRef.current = null;
+                                }
+                                setCurrentlyPlaying(null);
+                                setPlaybackProgress(0);
+                                setCurrentPlaybackTime(0);
+                                setIsPlaybackPaused(false);
+                                pausedPositionRef.current = 0;
+                            }
+
                             await FileSystem.deleteAsync(recordingToDelete.uri, { idempotent: true });
                             const updatedRecordings = recordings.filter(r => r.id !== recordingToDelete.id);
                             setRecordings(updatedRecordings);
@@ -476,7 +543,7 @@ export default function GuardianAudioRecorder() {
                 },
             ]
         );
-    }, [recordings, saveRecordings]);
+    }, [recordings, saveRecordings, currentlyPlaying]);
 
     // ========================================
     // RENDER FUNCTIONS
@@ -488,12 +555,13 @@ export default function GuardianAudioRecorder() {
             currentlyPlaying={currentlyPlaying}
             playbackProgress={playbackProgress}
             currentPlaybackTime={currentPlaybackTime}
+            isPlaybackPaused={isPlaybackPaused}
             onPlay={playRecording}
             onDelete={deleteRecording}
             formatDate={formatDate}
             formatTime={formatTime}
         />
-    ), [currentlyPlaying, playbackProgress, currentPlaybackTime, playRecording, deleteRecording, formatDate, formatTime]);
+    ), [currentlyPlaying, playbackProgress, currentPlaybackTime, isPlaybackPaused, playRecording, deleteRecording, formatDate, formatTime]);
 
     const keyExtractor = useCallback((item) => item.id, []);
 
@@ -564,7 +632,7 @@ export default function GuardianAudioRecorder() {
 }
 
 // ============================================================================
-// RECORDING ITEM COMPONENT
+// ENHANCED RECORDING ITEM COMPONENT
 // ============================================================================
 
 const RecordingItem = React.memo(({
@@ -572,6 +640,7 @@ const RecordingItem = React.memo(({
     currentlyPlaying,
     playbackProgress,
     currentPlaybackTime,
+    isPlaybackPaused,
     onPlay,
     onDelete,
     formatDate,
@@ -580,33 +649,43 @@ const RecordingItem = React.memo(({
     const isPlaying = currentlyPlaying === item.id;
     const waveAnim = useMemo(() => new Animated.Value(0), []);
 
-    // Audio wave animation when playing
+    // Audio wave animation when playing (pero NO cuando está pausado)
     useEffect(() => {
-        if (isPlaying) {
+        if (isPlaying && !isPlaybackPaused) {
             const waveAnimation = Animated.loop(
                 Animated.sequence([
                     Animated.timing(waveAnim, {
                         toValue: 1,
-                        duration: 800,
+                        duration: 600,
                         useNativeDriver: false,
                     }),
                     Animated.timing(waveAnim, {
                         toValue: 0,
-                        duration: 800,
+                        duration: 600,
                         useNativeDriver: false,
-                    })
+                    }),
                 ])
             );
-
             waveAnimation.start();
-
-            return () => {
-                waveAnimation.stop();
-            };
+            return () => waveAnimation.stop();
         } else {
             waveAnim.setValue(0);
         }
-    }, [isPlaying, waveAnim]);
+    }, [isPlaying, isPlaybackPaused, waveAnim]);
+
+    const getPlayButtonIcon = () => {
+        if (isPlaying) {
+            return isPlaybackPaused ? '▶' : '⏸';
+        }
+        return '▶';
+    };
+
+    const getButtonStyle = () => {
+        if (isPlaying) {
+            return isPlaybackPaused ? styles.pausedButton : styles.playingButton;
+        }
+        return styles.playButton;
+    };
 
     return (
         <View
@@ -615,30 +694,12 @@ const RecordingItem = React.memo(({
                 isPlaying && styles.recordingItemPlaying
             ]}
         >
-            {/* Background progress bar */}
-            {isPlaying && (
-                <View style={styles.progressBackground}>
-                    <Animated.View
-                        style={[
-                            styles.progressBar,
-                            {
-                                width: `${playbackProgress * 100}%`,
-                                backgroundColor: waveAnim.interpolate({
-                                    inputRange: [0, 1],
-                                    outputRange: ['rgba(34, 197, 94, 0.3)', 'rgba(34, 197, 94, 0.6)']
-                                })
-                            }
-                        ]}
-                    />
-                </View>
-            )}
-
             <View style={styles.recordingInfo}>
                 <View style={styles.recordingNameContainer}>
                     <Text style={[styles.recordingName, isPlaying && styles.recordingNamePlaying]}>
                         {item.name}
                     </Text>
-                    {isPlaying && (
+                    {isPlaying && !isPlaybackPaused && (
                         <View style={styles.playingIndicator}>
                             {[0, 1, 2].map((index) => (
                                 <Animated.View
@@ -662,6 +723,11 @@ const RecordingItem = React.memo(({
                             ))}
                         </View>
                     )}
+                    {isPlaying && isPlaybackPaused && (
+                        <View style={styles.pausedIndicator}>
+                            <Text style={styles.pausedText}>PAUSADO</Text>
+                        </View>
+                    )}
                 </View>
 
                 <Text style={[styles.recordingDate, isPlaying && styles.recordingDatePlaying]}>
@@ -680,7 +746,7 @@ const RecordingItem = React.memo(({
                     )}
                 </View>
 
-                {/* Detailed progress visualizer */}
+                {/* Progress bar */}
                 {isPlaying && (
                     <View style={styles.progressContainer}>
                         <View style={styles.progressTrack}>
@@ -689,10 +755,10 @@ const RecordingItem = React.memo(({
                                     styles.progressFill,
                                     {
                                         width: `${playbackProgress * 100}%`,
-                                        backgroundColor: waveAnim.interpolate({
+                                        backgroundColor: isPlaybackPaused ? '#fbbf24' : (waveAnim.interpolate({
                                             inputRange: [0, 1],
                                             outputRange: ['#22c55e', '#16a34a']
-                                        })
+                                        }))
                                     }
                                 ]}
                             />
@@ -701,11 +767,12 @@ const RecordingItem = React.memo(({
                                     styles.progressThumb,
                                     {
                                         left: `${playbackProgress * 100}%`,
+                                        backgroundColor: isPlaybackPaused ? '#fbbf24' : '#22c55e',
                                         transform: [{
-                                            scale: waveAnim.interpolate({
+                                            scale: isPlaybackPaused ? 1.1 : (waveAnim.interpolate({
                                                 inputRange: [0, 1],
                                                 outputRange: [1, 1.3]
-                                            })
+                                            }))
                                         }]
                                     }
                                 ]}
@@ -719,13 +786,12 @@ const RecordingItem = React.memo(({
                 <TouchableOpacity
                     style={[
                         styles.actionButton,
-                        styles.playButton,
-                        isPlaying && styles.playingButton
+                        getButtonStyle()
                     ]}
                     onPress={() => onPlay(item)}
                 >
                     <Text style={styles.actionButtonText}>
-                        {isPlaying ? '⏸' : '▶'}
+                        {getPlayButtonIcon()}
                     </Text>
                 </TouchableOpacity>
 
@@ -874,18 +940,6 @@ const styles = StyleSheet.create({
     },
 
     // Progress indicators
-    progressBackground: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 0,
-    },
-    progressBar: {
-        height: '100%',
-        borderRadius: 16,
-    },
     progressContainer: {
         marginTop: 4,
     },
@@ -951,6 +1005,20 @@ const styles = StyleSheet.create({
         backgroundColor: '#22c55e',
         borderRadius: 1.5,
     },
+    pausedIndicator: {
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        backgroundColor: 'rgba(251, 191, 36, 0.2)',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#fbbf24',
+    },
+    pausedText: {
+        fontSize: 10,
+        color: '#fbbf24',
+        fontWeight: 'bold',
+        letterSpacing: 0.5,
+    },
     recordingDate: {
         fontSize: 14,
         color: '#94a3b8',
@@ -980,6 +1048,7 @@ const styles = StyleSheet.create({
         gap: 8,
         zIndex: 1,
     },
+
     actionButton: {
         width: 40,
         height: 40,
@@ -998,6 +1067,12 @@ const styles = StyleSheet.create({
     playingButton: {
         backgroundColor: '#16a34a',
         shadowColor: '#22c55e',
+        shadowOpacity: 0.6,
+        elevation: 8,
+    },
+    pausedButton: {
+        backgroundColor: '#fbbf24',
+        shadowColor: '#fbbf24',
         shadowOpacity: 0.6,
         elevation: 8,
     },
