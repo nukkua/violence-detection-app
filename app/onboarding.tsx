@@ -1,8 +1,9 @@
-import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, Dimensions, Animated, ScrollView } from "react-native";
+import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, Dimensions, Animated, ScrollView, Platform } from "react-native";
 import { router } from "expo-router";
 import { useState } from "react";
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAnimate } from "@/hooks/useAnimate";
+import { Poppins_900Black } from "@expo-google-fonts/poppins"
 
 const { height } = Dimensions.get('window');
 
@@ -298,6 +299,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#1b2e1b',
+        paddingVertical: Platform.select({ android: 20 }),
     },
     backgroundGradient: {
         position: 'absolute',
@@ -314,10 +316,17 @@ const styles = StyleSheet.create({
         paddingHorizontal: 30,
     },
     appName: {
+        fontFamily: Platform.select({
+            ios: 'Inter-Black',
+        }),
+        fontWeight: Platform.select({
+            android: 600,
+        }),
+        letterSpacing: Platform.select({
+            android: 0.3,
+        }),
         fontSize: 28,
-        fontWeight: '900',
         color: '#ffffff',
-        letterSpacing: -0.5,
         textShadowColor: 'rgba(0, 0, 0, 0.3)',
         textShadowOffset: { width: 0, height: 2 },
         textShadowRadius: 4,
@@ -605,12 +614,20 @@ const styles = StyleSheet.create({
 
     // Estilos comunes
     title: {
-        fontSize: 32,
-        fontWeight: '800',
+        fontSize: 28,
+        fontFamily: Platform.select({
+            ios: 'Inter-Black',
+        }),
+        fontWeight: Platform.select({
+            android: 600,
+        }),
+
+        letterSpacing: Platform.select({
+            android: 0.3,
+        }),
         textAlign: 'center',
         marginBottom: 20,
         color: '#ffffff',
-        letterSpacing: -0.5,
         lineHeight: 38,
         textShadowColor: 'rgba(0, 0, 0, 0.3)',
         textShadowOffset: { width: 0, height: 2 },
@@ -633,6 +650,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 30,
         paddingBottom: 50,
         paddingTop: 30,
+        gap: 10,
     },
     spacer: {
         width: 80,

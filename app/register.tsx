@@ -165,10 +165,6 @@ export default function RegistrationScreen() {
 
                 setDniImage(photo.uri);
                 setShowCamera(false);
-                setTimeout(async () => {
-                    console.log('Foto guardada:', photo.uri);
-
-                }, 100);
 
             } catch (error) {
                 Alert.alert('Error', 'No se pudo tomar la foto');
@@ -667,6 +663,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#1b2e1b',
+        paddingVertical: Platform.select({ android: 20 }),
     },
     backgroundGradient: {
         position: 'absolute',

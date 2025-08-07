@@ -53,7 +53,6 @@ export const useAuthBiometric = () => {
                         : 'Biometrics';
 
                 setBiometryType(method);
-                console.log(result);
 
                 return { success: true, method };
             }

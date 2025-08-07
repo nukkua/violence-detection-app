@@ -1,4 +1,4 @@
-import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, Animated, ScrollView, Alert } from "react-native";
+import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, Animated, ScrollView, Alert, Platform} from "react-native";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { LinearGradient } from 'expo-linear-gradient';
@@ -57,7 +57,7 @@ export default function PermissionsScreen() {
                 microphone: audioStatus.status === 'granted'
             });
         } catch (error) {
-            console.log('Error checking permissions:', error);
+            console.error('Error checking permissions:', error);
         }
     };
 
@@ -344,6 +344,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#1b2e1b',
+        paddingVertical: Platform.select({ android: 20 }),
     },
     backgroundGradient: {
         position: 'absolute',

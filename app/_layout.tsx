@@ -3,6 +3,11 @@ import { SessionProvider, useSession } from '@/context/ctx';
 import { SplashScreenController } from '@/screens/splash-screen';
 import { Text } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useFonts } from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
+
+SplashScreen.preventAutoHideAsync();
 
 export default function Root() {
     return (
@@ -18,12 +23,13 @@ function RootNavigator() {
     const { session, isLoading } = useSession();
 
 
+
     if (isLoading) {
         return <Text>Loading...</Text>;
     }
 
     return (
-        <Stack>
+        <Stack >
             <Stack.Protected guard={session !== null}>
                 <Stack.Screen name="(app)" options={{ headerShown: false }} />
             </Stack.Protected>

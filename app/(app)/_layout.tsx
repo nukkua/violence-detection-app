@@ -1,21 +1,19 @@
 import { Tabs } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Platform, Alert, SafeAreaView, StyleSheet, Animated, View, Text, StatusBar } from 'react-native';
+import { Platform, Alert, SafeAreaView, StyleSheet, Animated, View, Text, StatusBar, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { HapticTab } from '@/components/HapticTab';
 import { IconSymbol } from '@/components/ui/IconSymbol';
-import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useAuthBiometric } from '@/hooks/useAuthBiometric';
 import { useAnimate } from "@/hooks/useAnimate";
 
-// Componente de fondo del tab bar con estética GuardianApp
 function CustomTabBarBackground() {
     return (
         <View style={styles.tabBarBackground}>
             <LinearGradient
                 colors={['rgba(45, 90, 39, 0.98)', 'rgba(62, 123, 55, 0.98)']}
-                style={StyleSheet.absoluteFillObject}
+                style={styles.gradientFill}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
             />
@@ -25,7 +23,6 @@ function CustomTabBarBackground() {
     );
 }
 
-// Ícono de tab con estética GuardianApp
 function CustomTabBarIcon({ name, focused, size = 24 }) {
     const scaleAnim = useAnimate(1);
     const glowAnim = useAnimate(focused ? 1 : 0);
@@ -33,7 +30,7 @@ function CustomTabBarIcon({ name, focused, size = 24 }) {
     React.useEffect(() => {
         Animated.parallel([
             Animated.spring(scaleAnim, {
-                toValue: focused ? 1 : 1,
+                toValue: focused ? 1.1 : 1,
                 useNativeDriver: true,
                 tension: 120,
                 friction: 8,
@@ -45,6 +42,21 @@ function CustomTabBarIcon({ name, focused, size = 24 }) {
             }),
         ]).start();
     }, [focused]);
+
+    // Mapeo de iconos para Android - nombres más básicos
+    const getIconForPlatform = (iconName) => {
+        if (Platform.OS === 'android') {
+            const androidIcons = {
+                'house.fill': 'house',
+                'waveform': 'music.note',
+                'exclamationmark.triangle.fill': 'exclamationmark.triangle',
+                'book.fill': 'book',
+                'person.circle.fill': 'person.circle'
+            };
+            return androidIcons[iconName] || iconName;
+        }
+        return iconName;
+    };
 
     return (
         <View style={styles.iconContainer}>
@@ -66,7 +78,7 @@ function CustomTabBarIcon({ name, focused, size = 24 }) {
             >
                 <IconSymbol
                     size={size}
-                    name={name}
+                    name={getIconForPlatform(name)}
                     color={focused ? '#ffffff' : '#ffffff'}
                 />
             </Animated.View>
@@ -74,13 +86,13 @@ function CustomTabBarIcon({ name, focused, size = 24 }) {
     );
 }
 
-// Botón de tab con feedback mejorado
+// Botón de tab con feedback mejorado - CORREGIDO PARA ANDROID
 function CustomHapticTab(props) {
     const pressAnim = useAnimate(1);
 
     const handlePressIn = () => {
         Animated.timing(pressAnim, {
-            toValue: 0.9,
+            toValue: 0.95,
             duration: 100,
             useNativeDriver: true,
         }).start();
@@ -100,12 +112,25 @@ function CustomHapticTab(props) {
     };
 
     return (
-        <Animated.View style={{ transform: [{ scale: pressAnim }] }}>
+        <Animated.View
+            style={{
+                transform: [{ scale: pressAnim }],
+                backgroundColor: 'transparent',
+                overflow: 'visible',
+            }}
+        >
             <HapticTab
                 {...props}
                 onPressIn={handlePressIn}
                 onPressOut={handlePressOut}
                 onPress={undefined}
+                style={[
+                    props.style,
+                    {
+                        backgroundColor: 'transparent',
+                        overflow: 'visible',
+                    }
+                ]}
             />
         </Animated.View>
     );
@@ -116,6 +141,70 @@ export default function TabLayout() {
     const { authenticate } = useAuthBiometric();
     const [isAuthenticating, setIsAuthenticating] = useState(true);
     const fadeAnim = useAnimate(0);
+
+    // 🔥 DETECTAR BOTONES DE NAVEGACIÓN EN ANDROID SIN DEPENDENCIAS
+    const screenDimensions = Dimensions.get('window');
+    const screenHeight = screenDimensions.height;
+    const screenWidth = screenDimensions.width;
+
+    // 📱 HEURÍSTICA PARA DETECTAR DISPOSITIVOS CON BOTONES DE NAVEGACIÓN
+    const detectNavigationButtons = () => {
+        if (Platform.OS !== 'android') return false;
+
+        // Dispositivos modernos (> 2018) tienden a tener gestos en lugar de botones
+        // Dispositivos con botones suelen tener ratios de pantalla específicos
+        const aspectRatio = screenHeight / screenWidth;
+
+        // Si la pantalla es muy alta (ratio > 2.1), probablemente tiene gestos
+        // Si es más estándar (ratio < 2.1), probablemente tiene botones
+        const likelyHasNavButtons = aspectRatio < 2.1 && screenHeight > 600;
+
+        // También considerar resoluciones comunes con botones
+        const commonNavButtonResolutions = [
+            { h: 1920, w: 1080 }, // Full HD con botones
+            { h: 1280, w: 720 },  // HD con botones
+            { h: 2340, w: 1080 }, // Algunos dispositivos con botones
+        ];
+
+        const hasCommonNavButtonResolution = commonNavButtonResolutions.some(
+            res => Math.abs(screenHeight - res.h) < 50 && Math.abs(screenWidth - res.w) < 50
+        );
+
+        return likelyHasNavButtons || hasCommonNavButtonResolution;
+    };
+
+    // 📏 CALCULAR ALTURA DEL TAB BAR SEGÚN DETECCIÓN
+    const getTabBarHeight = () => {
+        if (Platform.OS === 'ios') {
+            return 90;
+        }
+
+        const baseHeight = 70;
+        const hasNavButtons = detectNavigationButtons();
+
+        // Si detectamos botones de navegación, añadir espacio extra
+        if (hasNavButtons) {
+            return baseHeight + 40; // +40px para compensar botones
+        }
+
+        return baseHeight + 15; // +15px de padding de seguridad
+    };
+
+    const tabBarHeight = getTabBarHeight();
+    const hasNavButtons = detectNavigationButtons();
+
+    // Debug info (puedes remover esto después)
+    useEffect(() => {
+        if (Platform.OS === 'android') {
+            console.log('📱 Screen Info:', {
+                height: screenHeight,
+                width: screenWidth,
+                aspectRatio: (screenHeight / screenWidth).toFixed(2),
+                hasNavButtons,
+                tabBarHeight
+            });
+        }
+    }, []);
 
     useEffect(() => {
         const performAuthentication = async () => {
@@ -139,7 +228,6 @@ export default function TabLayout() {
                     Alert.alert(
                         '❌ Error de Autenticación',
                         result.error || 'Error desconocido',
-                        [{ text: 'Reintentar', onPress: () => performAuthentication() }]
                     );
                 }
             } catch (error) {
@@ -155,8 +243,11 @@ export default function TabLayout() {
     // Pantalla de carga con estética GuardianApp
     if (isAuthenticating) {
         return (
-            <View style={styles.loadingContainer}>
-                <StatusBar barStyle="light-content" backgroundColor="#2d5a27" />
+            <SafeAreaView style={styles.loadingContainer}>
+                <StatusBar
+                    barStyle={Platform.OS === 'android' ? 'light-content' : 'light-content'}
+                    backgroundColor="#2d5a27"
+                />
                 <LinearGradient
                     colors={['#2d5a27', '#3e7b37']}
                     style={styles.loadingGradient}
@@ -164,27 +255,154 @@ export default function TabLayout() {
                     end={{ x: 1, y: 1 }}
                 />
 
-                <SafeAreaView style={styles.loadingSafeArea}>
-                    <View style={styles.loadingContent}>
-                        <View style={styles.loadingIconContainer}>
-                            <View style={styles.loadingIconGlow} />
-                            <Text style={styles.loadingEmoji}>🔐</Text>
-                        </View>
-
-                        <Text style={styles.loadingTitle}>GuardianApp</Text>
-                        <Text style={styles.loadingSubtitle}>Verificando tu identidad...</Text>
-
-                        <View style={styles.loadingSpinner}>
-                            <View style={styles.spinnerDot} />
-                            <View style={[styles.spinnerDot, styles.spinnerDelay1]} />
-                            <View style={[styles.spinnerDot, styles.spinnerDelay2]} />
-                        </View>
+                <View style={styles.loadingContent}>
+                    <View style={styles.loadingIconContainer}>
+                        <View style={styles.loadingIconGlow} />
+                        <Text style={styles.loadingEmoji}>🔐</Text>
                     </View>
-                </SafeAreaView>
-            </View>
+
+                    <Text style={styles.loadingTitle}>GuardianApp</Text>
+                    <Text style={styles.loadingSubtitle}>Verificando tu identidad...</Text>
+
+                    <View style={styles.loadingSpinner}>
+                        <View style={styles.spinnerDot} />
+                        <View style={[styles.spinnerDot, styles.spinnerDelay1]} />
+                        <View style={[styles.spinnerDot, styles.spinnerDelay2]} />
+                    </View>
+                </View>
+            </SafeAreaView>
         );
     }
 
+    // Estructura específica para Android
+    if (Platform.OS === "android") {
+        return (
+            <SafeAreaView style={styles.androidContainer}>
+                <StatusBar
+                    barStyle="light-content"
+                    backgroundColor="#2d5a27"
+                    translucent={false}
+                />
+
+                <LinearGradient
+                    colors={['#2d5a27', '#3e7b37']}
+                    style={styles.backgroundGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                />
+
+                {/* Header para Android */}
+                <View style={styles.androidHeader}>
+                    <Text style={styles.appTitle}>GuardianApp</Text>
+                    <View style={styles.statusBadge}>
+                        <View style={styles.statusDot} />
+                        <Text style={styles.statusText}>Activo</Text>
+                    </View>
+                </View>
+
+                {/* Contenido principal con navegación */}
+                <Animated.View style={[styles.androidMainContent, { opacity: fadeAnim }]}>
+                    <Tabs
+                        screenOptions={{
+                            headerShown: false,
+                            tabBarButton: CustomHapticTab,
+                            tabBarBackground: CustomTabBarBackground,
+                            tabBarStyle: [
+                                styles.androidTabBarStyle,
+                                {
+                                    height: tabBarHeight,
+                                    paddingBottom: hasNavButtons ? 25 : 10,
+                                }
+                            ],
+                            tabBarLabelStyle: styles.tabBarLabel,
+                            tabBarItemStyle: styles.tabBarItem,
+                            tabBarActiveTintColor: '#ffffff',
+                            tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.6)',
+                            tabBarIconStyle: {
+                                backgroundColor: 'transparent',
+                            },
+                            tabBarButtonStyle: {
+                                backgroundColor: 'transparent',
+                                overflow: 'visible',
+                            },
+                        }}>
+
+                        <Tabs.Screen
+                            name="index"
+                            options={{
+                                title: 'Inicio',
+                                tabBarIcon: ({ focused }) => (
+                                    <CustomTabBarIcon
+                                        name="house.fill"
+                                        focused={focused}
+                                        size={24}
+                                    />
+                                ),
+                            }}
+                        />
+
+                        <Tabs.Screen
+                            name="recordings"
+                            options={{
+                                title: 'Grabaciones',
+                                tabBarIcon: ({ focused }) => (
+                                    <CustomTabBarIcon
+                                        name="waveform"
+                                        focused={focused}
+                                        size={24}
+                                    />
+                                ),
+                            }}
+                        />
+
+                        <Tabs.Screen
+                            name="explore"
+                            options={{
+                                title: 'Emergencia',
+                                tabBarIcon: ({ focused }) => (
+                                    <CustomTabBarIcon
+                                        name="exclamationmark.triangle.fill"
+                                        focused={focused}
+                                        size={24}
+                                    />
+                                ),
+                            }}
+                        />
+
+                        <Tabs.Screen
+                            name="law348"
+                            options={{
+                                title: 'Ley 348',
+                                tabBarIcon: ({ focused }) => (
+                                    <CustomTabBarIcon
+                                        name="book.fill"
+                                        focused={focused}
+                                        size={24}
+                                    />
+                                ),
+                            }}
+                        />
+
+                        <Tabs.Screen
+                            name="profile"
+                            options={{
+                                title: 'Perfil',
+                                tabBarIcon: ({ focused }) => (
+                                    <CustomTabBarIcon
+                                        name="person.circle.fill"
+                                        focused={focused}
+                                        size={24}
+                                    />
+                                ),
+                            }}
+                        />
+                    </Tabs>
+                </Animated.View>
+            </SafeAreaView>
+        );
+    }
+
+    // Estructura para iOS (original)
     return (
         <View style={styles.container}>
             <StatusBar barStyle="light-content" backgroundColor="#2d5a27" />
@@ -296,10 +514,19 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
+    // Contenedor base
     container: {
         flex: 1,
         backgroundColor: '#1b2e1b',
     },
+
+    // Contenedor específico para Android
+    androidContainer: {
+        flex: 1,
+        backgroundColor: '#1b2e1b',
+        paddingTop: Platform.select({android: 20})
+    },
+
     backgroundGradient: {
         position: 'absolute',
         left: 0,
@@ -308,7 +535,7 @@ const styles = StyleSheet.create({
         bottom: 0,
     },
 
-    // Header Styles - Manteniendo estética GuardianApp
+    // Header Styles para iOS
     headerSafeArea: {
         backgroundColor: 'transparent',
         zIndex: 10,
@@ -322,6 +549,20 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: 'rgba(255, 255, 255, 0.1)',
     },
+
+    // Header específico para Android
+    androidHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 25,
+        paddingVertical: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+        backgroundColor: 'transparent',
+        zIndex: 10,
+    },
+
     appTitle: {
         fontSize: 26,
         fontWeight: '800',
@@ -370,14 +611,20 @@ const styles = StyleSheet.create({
         flex: 1,
     },
 
-    // Tab Bar Styles - Estética GuardianApp mejorada
+    // Main Content específico para Android
+    androidMainContent: {
+        flex: 1,
+        paddingBottom: 0, // Sin padding extra en Android
+    },
+
+    // Tab Bar Styles para iOS
     tabBarStyle: {
         position: 'absolute',
         bottom: 0,
         left: 0,
         right: 0,
-        height: Platform.OS === 'ios' ? 90 : 70,
-        paddingBottom: Platform.OS === 'ios' ? 25 : 10,
+        height: 90,
+        paddingBottom: 25,
         paddingTop: 12,
         borderTopWidth: 0,
         elevation: 25,
@@ -390,12 +637,46 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
         backgroundColor: 'transparent',
     },
+
+    // Tab Bar específico para Android
+    androidTabBarStyle: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 70, // Altura base - se ajustará dinámicamente
+        paddingBottom: 10, // Padding base - se ajustará dinámicamente
+        paddingTop: 12,
+        borderTopWidth: 0,
+        elevation: 25,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -8 },
+        shadowOpacity: 0.4,
+        shadowRadius: 20,
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+        overflow: 'hidden',
+        backgroundColor: 'transparent',
+    },
+
     tabBarBackground: {
         flex: 1,
         borderTopLeftRadius: 28,
         borderTopRightRadius: 28,
         overflow: 'hidden',
+        backgroundColor: 'rgba(45, 90, 39, 0.98)',
     },
+
+    gradientFill: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+    },
+
     tabBarTopGlow: {
         position: 'absolute',
         top: 0,
@@ -408,7 +689,10 @@ const styles = StyleSheet.create({
         shadowOpacity: 1,
         shadowRadius: 8,
         elevation: 5,
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
     },
+
     tabBarLabel: {
         fontSize: 10,
         fontWeight: '600',
@@ -417,9 +701,11 @@ const styles = StyleSheet.create({
     },
     tabBarItem: {
         paddingVertical: 4,
+        backgroundColor: 'transparent',
+        overflow: 'visible',
     },
 
-    // Icon Styles - Manteniendo estética GuardianApp
+    // Icon Styles
     iconContainer: {
         alignItems: 'center',
         justifyContent: 'center',
@@ -461,7 +747,7 @@ const styles = StyleSheet.create({
         elevation: 10,
     },
 
-    // Loading Screen - Manteniendo estética GuardianApp
+    // Loading Screen
     loadingContainer: {
         flex: 1,
         backgroundColor: '#1b2e1b',
@@ -472,9 +758,6 @@ const styles = StyleSheet.create({
         right: 0,
         top: 0,
         bottom: 0,
-    },
-    loadingSafeArea: {
-        flex: 1,
     },
     loadingContent: {
         flex: 1,

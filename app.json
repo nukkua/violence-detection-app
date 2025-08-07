@@ -45,6 +45,26 @@
                     "resizeMode": "contain",
                     "backgroundColor": "#ffffff"
                 }
+            ],
+            [
+                "expo-font",
+                {
+                    "fonts": [
+                        "node_modules/@expo-google-fonts/poppins/900Black/Poppins_900Black.ttf"
+                    ]
+                }
+            ],
+            [
+                "expo-local-authentication",
+                {
+                    "faceIDPermission": "Allow $(PRODUCT_NAME) to use Face ID."
+                }
+            ],
+            [
+                "expo-location",
+                {
+                    "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location."
+                }
             ]
         ],
         "experiments": {
