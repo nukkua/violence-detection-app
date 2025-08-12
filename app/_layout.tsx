@@ -3,9 +3,7 @@ import { SessionProvider, useSession } from '@/context/ctx';
 import { SplashScreenController } from '@/screens/splash-screen';
 import { Text } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
 
 SplashScreen.preventAutoHideAsync();
 

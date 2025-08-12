@@ -13,10 +13,13 @@
       "infoPlist": {
         "UIBackgroundModes": [
           "audio",
+          "audio",
+          "audio",
           "audio"
         ],
         "NSMicrophoneUsageDescription": "Esta app necesita acceso al micrófono para grabar audio incluso con la pantalla apagada.",
-        "NSCameraUsageDescription": "Esta app necesita acceso a la camara para verificar tu identidad."
+        "NSCameraUsageDescription": "Esta app necesita acceso a la camara para verificar tu identidad.",
+        "ITSAppUsesNonExemptEncryption": false
       },
       "bundleIdentifier": "com.nukkuayess.violenceapp"
     },
@@ -85,6 +88,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "496efa7a-7a62-4660-a020-d8b5f3ef810d"
+      }
     }
   }
 }
