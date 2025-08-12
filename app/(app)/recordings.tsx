@@ -6,8 +6,6 @@ import {
     FlatList,
     StyleSheet,
     Alert,
-    SafeAreaView,
-    StatusBar,
     Dimensions,
     Animated,
     AppState,
@@ -1120,16 +1118,13 @@ const styles = StyleSheet.create({
     // Enhanced Recording section
     recordingSection: {
         alignItems: 'center',
-        paddingVertical: 48,
-        marginBottom: 24,
+        paddingVertical: 24,
     },
 
     recordingStatus: {
         alignItems: 'center',
-        marginBottom: 32,
-        backgroundColor: 'rgba(239, 68, 68, 0.06)',
+        marginBottom: 10,
         paddingHorizontal: 24,
-        paddingVertical: 16,
         borderRadius: 20,
         // Removed border completely for cleaner look
     },
@@ -1139,7 +1134,6 @@ const styles = StyleSheet.create({
         height: 12,
         borderRadius: 6,
         backgroundColor: 'transparent',
-        marginBottom: 8,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -1177,7 +1171,7 @@ const styles = StyleSheet.create({
     },
 
     recordButtonContainer: {
-        marginBottom: 24,
+        marginBottom: 10,
         shadowColor: '#000000',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.1,
@@ -1232,7 +1226,6 @@ const styles = StyleSheet.create({
     // Enhanced List section
     listSection: {
         flex: 1,
-        marginBottom: 20,
     },
 
     listHeader: {
@@ -1478,7 +1471,6 @@ const styles = StyleSheet.create({
     // Enhanced Empty state
     emptyState: {
         flex: 1,
-        justifyContent: 'center',
         alignItems: 'center',
         paddingVertical: 80,
         paddingHorizontal: 40,
