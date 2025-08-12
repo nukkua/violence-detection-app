@@ -6,8 +6,11 @@ import {
     FlatList,
     StyleSheet,
     Alert,
+    SafeAreaView,
+    StatusBar,
     Dimensions,
     Animated,
+    AppState,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IconSymbol } from '@/components/ui/IconSymbol';
@@ -38,6 +41,7 @@ export default function GuardianAudioRecorder() {
     const [recordings, setRecordings] = useState([]);
     const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
     const [recordingTime, setRecordingTime] = useState(0);
+    const [recordingStartTime, setRecordingStartTime] = useState(null);
     const [playbackProgress, setPlaybackProgress] = useState(0);
     const [currentPlaybackTime, setCurrentPlaybackTime] = useState(0);
     const [isPlaybackPaused, setIsPlaybackPaused] = useState(false);
@@ -51,6 +55,7 @@ export default function GuardianAudioRecorder() {
     const progressIntervalRef = useRef(null);
     const pausedPositionRef = useRef(0);
     const playbackStartTimeRef = useRef(0);
+    const recordingTimerRef = useRef(null);
 
     // ========================================
     // AUDIO SETUP
@@ -133,22 +138,48 @@ export default function GuardianAudioRecorder() {
         ]).start();
     }, []);
 
-    // Recording timer
+    // REAL background-aware recording timer
     useEffect(() => {
-        let interval;
-        if (recorderState.isRecording) {
-            interval = setInterval(() => {
-                setRecordingTime(prev => prev + 1);
-            }, 1000);
+        if (recorderState.isRecording && recordingStartTime) {
+            const updateTimer = () => {
+                const now = Date.now();
+                const elapsed = Math.floor((now - recordingStartTime) / 1000);
+                setRecordingTime(elapsed);
+            };
+
+            // Update immediately
+            updateTimer();
+            
+            // Clear any existing timer
+            if (recordingTimerRef.current) {
+                clearInterval(recordingTimerRef.current);
+            }
+            
+            // Start new timer
+            recordingTimerRef.current = setInterval(updateTimer, 1000);
+            
+            return () => {
+                if (recordingTimerRef.current) {
+                    clearInterval(recordingTimerRef.current);
+                    recordingTimerRef.current = null;
+                }
+            };
         } else {
-            setRecordingTime(0);
+            // Not recording - clear timer
+            if (recordingTimerRef.current) {
+                clearInterval(recordingTimerRef.current);
+                recordingTimerRef.current = null;
+            }
+            if (!recorderState.isRecording) {
+                setRecordingTime(0);
+            }
         }
-        return () => clearInterval(interval);
-    }, [recorderState.isRecording]);
+    }, [recorderState.isRecording, recordingStartTime]);
 
     // Cleanup on unmount
     useEffect(() => {
         return () => {
+            // Audio cleanup
             if (currentPlayerRef.current) {
                 try {
                     currentPlayerRef.current.pause();
@@ -158,11 +189,16 @@ export default function GuardianAudioRecorder() {
                 }
                 currentPlayerRef.current = null;
             }
+            
+            // Interval cleanup
             if (playbackCheckIntervalRef.current) {
                 clearInterval(playbackCheckIntervalRef.current);
             }
             if (progressIntervalRef.current) {
                 clearInterval(progressIntervalRef.current);
+            }
+            if (recordingTimerRef.current) {
+                clearInterval(recordingTimerRef.current);
             }
         };
     }, []);
@@ -183,6 +219,24 @@ export default function GuardianAudioRecorder() {
             }
         }
     }, [isLoadingRecordings, recordingsData]);
+
+    // App state handler for background sync
+    useEffect(() => {
+        const handleAppStateChange = (nextAppState) => {
+            if (nextAppState === 'active' && recorderState.isRecording && recordingStartTime) {
+                // App became active while recording - sync timer immediately
+                const now = Date.now();
+                const elapsed = Math.floor((now - recordingStartTime) / 1000);
+                setRecordingTime(elapsed);
+            }
+        };
+
+        const subscription = AppState.addEventListener('change', handleAppStateChange);
+        
+        return () => {
+            subscription?.remove();
+        };
+    }, [recorderState.isRecording, recordingStartTime]);
 
     // Request permissions on mount
     useEffect(() => {
@@ -298,12 +352,8 @@ export default function GuardianAudioRecorder() {
 
     const startRecording = useCallback(async () => {
         try {
-            // No permitir grabar si hay algo reproduciéndose
             if (currentlyPlaying) {
-                Alert.alert(
-                    'Audio en reproducción', 
-                    'Detén la reproducción antes de grabar un nuevo audio'
-                );
+                Alert.alert('Audio en reproducción', 'Detén la reproducción antes de grabar un nuevo audio');
                 return;
             }
 
@@ -312,7 +362,7 @@ export default function GuardianAudioRecorder() {
 
             await setRecordingMode();
 
-            // Stop any active playback safely
+            // Clean up any existing playback
             if (currentPlayerRef.current) {
                 try {
                     await currentPlayerRef.current.pause();
@@ -335,20 +385,31 @@ export default function GuardianAudioRecorder() {
                 }
             }
 
+            // Start recording
             await audioRecorder.prepareToRecordAsync();
-            audioRecorder.record();
+            
+            // Set the exact start time
+            const startTime = Date.now();
+            setRecordingStartTime(startTime);
+            
+            await audioRecorder.record();
         } catch (error) {
             console.error('Error starting recording:', error);
             Alert.alert('Error', 'No se pudo iniciar la grabación');
+            setRecordingStartTime(null);
         }
     }, [requestPermissions, setRecordingMode, audioRecorder, currentlyPlaying]);
 
     const stopRecording = useCallback(async () => {
         try {
-            if (!recorderState.isRecording) return;
+            if (!recorderState.isRecording || !recordingStartTime) return;
 
             await audioRecorder.stop();
             const uri = audioRecorder.uri;
+            
+            // Calculate the EXACT duration
+            const exactDuration = Math.floor((Date.now() - recordingStartTime) / 1000);
+            
             await setPlaybackMode();
 
             if (uri) {
@@ -359,28 +420,30 @@ export default function GuardianAudioRecorder() {
                 const fileName = `recording_${timestamp}.m4a`;
                 const newUri = `${recordingsDir}${fileName}`;
 
-                await FileSystem.moveAsync({
-                    from: uri,
-                    to: newUri,
-                });
+                await FileSystem.moveAsync({ from: uri, to: newUri });
 
                 const newRecording = {
                     id: timestamp.toString(),
                     uri: newUri,
                     name: `Grabación ${recordings.length + 1}`,
                     date: timestamp,
-                    duration: recordingTime,
+                    duration: exactDuration,
                 };
 
                 const updatedRecordings = [newRecording, ...recordings];
                 setRecordings(updatedRecordings);
                 await saveRecordings(updatedRecordings);
             }
+            
+            // Reset states
+            setRecordingStartTime(null);
+            setRecordingTime(0);
+            
         } catch (error) {
             console.error('Error stopping recording:', error);
             Alert.alert('Error', 'No se pudo guardar la grabación');
         }
-    }, [recorderState.isRecording, audioRecorder, recordings, recordingTime, saveRecordings, setPlaybackMode]);
+    }, [recorderState.isRecording, audioRecorder, recordings, recordingStartTime, saveRecordings, setPlaybackMode]);
 
     // Fixed playback function with proper pause/resume logic
     const playRecording = useCallback(async (recordingItem) => {
@@ -1057,13 +1120,17 @@ const styles = StyleSheet.create({
     // Enhanced Recording section
     recordingSection: {
         alignItems: 'center',
-        paddingVertical: 24,
+        paddingVertical: 48,
+        marginBottom: 24,
     },
 
     recordingStatus: {
         alignItems: 'center',
-        marginBottom: 4,
+        marginBottom: 32,
+        backgroundColor: 'rgba(239, 68, 68, 0.06)',
         paddingHorizontal: 24,
+        paddingVertical: 16,
+        borderRadius: 20,
         // Removed border completely for cleaner look
     },
 
@@ -1098,6 +1165,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#ef4444',
         letterSpacing: 0.5,
+        marginBottom: 4,
     },
 
     recordingTimer: {
@@ -1164,6 +1232,7 @@ const styles = StyleSheet.create({
     // Enhanced List section
     listSection: {
         flex: 1,
+        marginBottom: 20,
     },
 
     listHeader: {
@@ -1409,6 +1478,7 @@ const styles = StyleSheet.create({
     // Enhanced Empty state
     emptyState: {
         flex: 1,
+        justifyContent: 'center',
         alignItems: 'center',
         paddingVertical: 80,
         paddingHorizontal: 40,
