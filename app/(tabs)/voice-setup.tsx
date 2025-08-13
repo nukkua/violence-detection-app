@@ -198,11 +198,11 @@ export default function VoiceSetupScreen() {
     };
 
     const suggestedPhrases = [
-        "Hola Asistente Legal",
-        "Necesito ayuda legal",
-        "Activar consulta",
-        "Asistente Bolivia",
-        "Consulta Ley 348"
+        "Ayuda",
+        "Me violan",
+        "Me pasas mi chompa roja",
+        "Auxilio",
+        "Te Verde"
     ];
 
     return (
@@ -227,7 +227,7 @@ export default function VoiceSetupScreen() {
                             <Text style={styles.instructionTitle}>¿Cómo funciona?</Text>
                         </View>
                         <Text style={styles.instructionText}>
-                            Escribe una frase única y grábala. Esta será tu comando de voz para activar el asistente legal.
+                            Escribe una frase única. Esta será tu comando de voz para activar la alerta 
                         </Text>
                     </View>
 
@@ -239,7 +239,7 @@ export default function VoiceSetupScreen() {
                                 style={styles.textInput}
                                 value={voicePhrase}
                                 onChangeText={setVoicePhrase}
-                                placeholder="Ej: Hola Asistente Legal"
+                                placeholder="Ej: Auxilio"
                                 placeholderTextColor="#94a3b8"
                                 maxLength={50}
                             />

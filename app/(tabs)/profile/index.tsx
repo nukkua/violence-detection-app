@@ -15,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useAnimate } from "@/hooks/useAnimate";
 import { router } from 'expo-router';
+import { useSession } from '@/context/ctx';
 
 // Datos del usuario (normalmente vendrían de un context o estado global)
 const userData = {
@@ -204,6 +205,7 @@ function PersonalInfo() {
 
 function ActionButtons() {
     const fadeAnim = useAnimate(0);
+    const { signOut } = useSession();
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -269,7 +271,7 @@ function ActionButtons() {
             "¿Estás segura de que quieres cerrar sesión?",
             [
                 { text: "Cancelar", style: "cancel" },
-                { text: "Cerrar sesión", style: "destructive", onPress: () => router.replace('/') }
+                { text: "Cerrar sesión", style: "destructive", onPress: () => signOut() }
             ]
         );
     };
