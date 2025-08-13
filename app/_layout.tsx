@@ -29,7 +29,7 @@ function RootNavigator() {
     return (
         <Stack >
             <Stack.Protected guard={session !== null}>
-                <Stack.Screen name="(app)" options={{ headerShown: false }} />
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             </Stack.Protected>
 
             <Stack.Protected guard={session === null}>

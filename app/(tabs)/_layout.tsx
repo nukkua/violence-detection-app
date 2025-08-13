@@ -122,17 +122,17 @@ function DynamicHeader({ currentPath, onBackPress }) {
     }, [currentPath]);
 
     const isHome = currentPath === '/';
-    const isProfile = currentPath === '/profile' || currentPath === '/profile/privacy-settings';
+    const isProfile = currentPath === '/profile' || currentPath === '/profile/privacy-settings' || currentPath === '/voice-setup';
 
     if (isProfile) return null;
 
     const getHeaderContent = () => {
         switch (currentPath) {
             case '/recordings':
-                return { title: 'Audios', subtitle: 'Tus grabaciones de audio', showBack: true };
-            case '/explore':
-                return { title: 'Ley 348', subtitle: 'Protección integral a las mujeres', showBack: true };
+                return { title: 'Grabaciones', subtitle: 'Tus grabaciones de audio', showBack: true };
             case '/law348':
+                return { title: 'Ley 348', subtitle: 'Protección integral a las mujeres', showBack: true };
+            case '/explore':
                 return { title: 'Documentos', subtitle: 'Información legal', showBack: true };
             default:
                 return { title: null, subtitle: null, showBack: false };
@@ -160,21 +160,6 @@ function DynamicHeader({ currentPath, onBackPress }) {
                 ) : (
                     <>
                         <View style={styles.headerWithBack}>
-                            {showBack && (
-                                <TouchableOpacity
-                                    style={styles.backButton}
-                                    onPress={onBackPress}
-                                    activeOpacity={0.8}
-                                >
-                                    <View style={styles.backButtonContent}>
-                                        <IconSymbol
-                                            name="chevron.left"
-                                            size={18}
-                                            color="#1c1c1e"
-                                        />
-                                    </View>
-                                </TouchableOpacity>
-                            )}
                             <View style={styles.titleSection}>
                                 <Text style={styles.headerTitle}>{title}</Text>
                                 <Text style={styles.headerSubtitle}>{subtitle}</Text>
@@ -207,7 +192,7 @@ function ProfileButton() {
             useNativeDriver: true,
         }).start();
 
-        router.push('/(app)/profile');
+        router.push('/profile');
     };
 
     return (
@@ -229,7 +214,7 @@ function ProfileButton() {
     );
 }
 
-export default function TabLayout() {
+export default function AppLayout() {
     const colorScheme = useColorScheme();
     const { authenticate } = useAuthBiometric();
     const [isAuthenticating, setIsAuthenticating] = useState(true);
@@ -339,13 +324,14 @@ export default function TabLayout() {
             {/* Contenido principal */}
             <Animated.View style={[styles.mainContent, { opacity: fadeAnim }]}>
                 <Tabs
+                    backBehavior='fullHistory'
                     screenOptions={{
                         headerShown: false,
                         tabBarButton: CleanHapticTab,
                         tabBarBackground: CleanTabBar,
                         tabBarStyle: [
                             styles.tabBarStyle,
-                            (pathname === '/profile' || pathname === '/profile/privacy-settings') && { display: 'none' }
+                            (pathname === '/profile' || pathname === '/profile/privacy-settings' || pathname === '/voice-setup') && { display: 'none' }
                         ],
                         tabBarShowLabel: false,
                         tabBarItemStyle: styles.tabBarItem,
@@ -376,11 +362,12 @@ export default function TabLayout() {
                                     size={24}
                                 />
                             ),
+                            
                         }}
                     />
 
                     <Tabs.Screen
-                        name="explore"
+                        name="law348"
                         options={{
                             tabBarIcon: ({ focused }) => (
                                 <MinimalTabIcon
@@ -393,8 +380,9 @@ export default function TabLayout() {
                     />
 
                     <Tabs.Screen
-                        name="law348"
+                        name="profile"
                         options={{
+                            href: null,
                             tabBarIcon: ({ focused }) => (
                                 <MinimalTabIcon
                                     name="person.circle.fill"
@@ -406,13 +394,14 @@ export default function TabLayout() {
                     />
 
                     <Tabs.Screen
-                        name="profile/privacy-settings"
+                        name="explore"
                         options={{
                             href: null,
                         }}
                     />
+
                     <Tabs.Screen
-                        name="profile/index"
+                        name="voice-setup"
                         options={{
                             href: null,
                         }}
@@ -498,7 +487,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     headerTitle: {
-        fontSize: 22,
+        fontSize: 28,
         fontWeight: '700',
         color: '#111827',
         letterSpacing: -0.3,

@@ -201,71 +201,6 @@ function PersonalInfo() {
     );
 }
 
-function SettingsSection() {
-    const [notifications, setNotifications] = useState(true);
-    const [autoRecording, setAutoRecording] = useState(false);
-    const [emergencyMode, setEmergencyMode] = useState(true);
-    const fadeAnim = useAnimate(0);
-
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 500,
-                useNativeDriver: true,
-            }).start();
-        }, 900);
-        return () => clearTimeout(timer);
-    }, []);
-
-    const SettingRow = ({ title, subtitle, value, onValueChange, icon }) => (
-        <View style={styles.settingRow}>
-            <View style={styles.settingLeft}>
-                <IconSymbol name={icon} size={20} color="#64748b" />
-                <View style={styles.settingText}>
-                    <Text style={styles.settingTitle}>{title}</Text>
-                    <Text style={styles.settingSubtitle}>{subtitle}</Text>
-                </View>
-            </View>
-            <Switch
-                value={value}
-                onValueChange={onValueChange}
-                trackColor={{ false: '#e2e8f0', true: '#3b82f6' }}
-                thumbColor={value ? '#ffffff' : '#64748b'}
-            />
-        </View>
-    );
-
-    return (
-        <Animated.View style={[styles.settingsContainer, { opacity: fadeAnim }]}>
-            <Text style={styles.sectionTitle}>Configuración de Seguridad</Text>
-
-            <SettingRow
-                title="Notificaciones"
-                subtitle="Alertas y recordatorios"
-                value={notifications}
-                onValueChange={setNotifications}
-                icon="bell"
-            />
-
-            <SettingRow
-                title="Grabación automática"
-                subtitle="Detectar situaciones de riesgo"
-                value={autoRecording}
-                onValueChange={setAutoRecording}
-                icon="record.circle"
-            />
-
-            <SettingRow
-                title="Modo emergencia"
-                subtitle="Activación rápida de ayuda"
-                value={emergencyMode}
-                onValueChange={setEmergencyMode}
-                icon="exclamationmark.triangle"
-            />
-        </Animated.View>
-    );
-}
 
 function ActionButtons() {
     const fadeAnim = useAnimate(0);
@@ -411,7 +346,6 @@ export default function ProfilePage() {
                 <ProfileHeader />
                 <StatsGrid />
                 <PersonalInfo />
-                <SettingsSection />
                 <ActionButtons />
 
                 <View style={styles.footer}>

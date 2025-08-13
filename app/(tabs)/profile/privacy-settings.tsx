@@ -166,7 +166,7 @@ function SecurityInfoSection() {
 
 export default function PrivacySettingsPage() {
     const handleBack = () => {
-        router.replace('/profile');
+        router.back();
     };
 
     return (
