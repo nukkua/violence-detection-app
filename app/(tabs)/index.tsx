@@ -8,14 +8,16 @@ import {
     Dimensions,
     StatusBar,
     SafeAreaView,
-    ScrollView
+    ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useAnimate } from "@/hooks/useAnimate";
 import { router } from 'expo-router';
 
+
 const { width, height } = Dimensions.get('window');
+
 
 
 // ============================================================================
@@ -25,6 +27,7 @@ function VoiceSetupCard() {
     const scaleAnim = useAnimate(0.95);
     const fadeAnim = useAnimate(0);
     const [pressed, setPressed] = useState(false);
+    
 
     useEffect(() => {
         setTimeout(() => {

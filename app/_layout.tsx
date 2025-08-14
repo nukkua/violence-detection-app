@@ -5,6 +5,7 @@ import { Text } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 
+
 SplashScreen.preventAutoHideAsync();
 
 export default function Root() {
@@ -19,7 +20,6 @@ export default function Root() {
 
 function RootNavigator() {
     const { session, isLoading } = useSession();
-
 
 
     if (isLoading) {

@@ -17,7 +17,6 @@ import { useAnimate } from "@/hooks/useAnimate";
 import { router } from 'expo-router';
 import { useSession } from '@/context/ctx';
 
-// Datos del usuario (normalmente vendrían de un context o estado global)
 const userData = {
     fullName: 'Albert Stevano',
     birthDate: '15 de Marzo, 1992',
@@ -28,7 +27,6 @@ const userData = {
     idNumber: '*****234'
 };
 
-// Estadísticas simuladas
 const userStats = {
     recordingsCount: 47,
     safetyScore: 92,
