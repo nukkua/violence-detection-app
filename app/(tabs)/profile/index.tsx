@@ -73,6 +73,7 @@ function ProfileHeader() {
 
             <View style={styles.userInfo}>
                 <Text style={styles.userName}>{userData.fullName}</Text>
+                
                 <Text style={styles.userProfession}>{userData.profession}</Text>
                 <View style={styles.statusBadge}>
                     <View style={styles.statusDot} />

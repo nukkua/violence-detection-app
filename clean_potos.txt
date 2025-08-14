@@ -1,0 +1,7 @@
+
+git add -A && git commit -m "WIP rescue"  
+rm -rf android ios
+rm -rf node_modules
+rm -f package-lock.json yarn.lock pnpm-lock.yaml bun.lockb
+
+rm -rf ~/.gradle/caches ~/.gradle/daemon ~/.gradle/native ~/.gradle/kotlin
