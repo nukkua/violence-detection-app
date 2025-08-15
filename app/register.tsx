@@ -1,4 +1,4 @@
-import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, Dimensions, Animated, ScrollView, TextInput, KeyboardAvoidingView, Platform, Image, Alert, Modal } from "react-native";
+import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, Dimensions, Animated, ScrollView, TextInput, KeyboardAvoidingView, Platform, Image, Alert, Modal, Button} from "react-native";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { LinearGradient } from 'expo-linear-gradient';
@@ -159,7 +159,7 @@ export default function RegistrationScreen() {
                 const photo = await cameraRef.current.takePictureAsync({
                     quality: 1,
                     base64: false,
-                    skipProcessing: false,
+                    skipProcessing: true,
                 });
 
 
@@ -287,7 +287,17 @@ export default function RegistrationScreen() {
                             </View>
                         </TouchableOpacity>
                     ) :
-                        <Text onPress={() => recognizeTextFromImage(dniImage)}>Ya esta</Text>
+                        <Button
+                            onPress={async () => {
+                                // result will contain an object with the result information
+                                const result = await launchDocumentScannerAsync({
+                                    pageLimit: 1,
+                                    galleryImportAllowed: false,
+                                    resultFormats: ResultFormatOptions.ALL,
+                                });
+                            }}
+                            title="Scan Document"
+                        />
                 }
             </View>
 
