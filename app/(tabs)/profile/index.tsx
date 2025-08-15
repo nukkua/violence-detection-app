@@ -16,6 +16,7 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useAnimate } from "@/hooks/useAnimate";
 import { router } from 'expo-router';
 import { useSession } from '@/context/ctx';
+import ExpoSettingsModule from '@/packages/expo-settings/src/ExpoSettingsModule';
 
 const userData = {
     fullName: 'Albert Stevano',
@@ -75,6 +76,7 @@ function ProfileHeader() {
                 <Text style={styles.userName}>{userData.fullName}</Text>
                 
                 <Text style={styles.userProfession}>{userData.profession}</Text>
+                <Text >{ExpoSettingsModule.hello()}</Text>
                 <View style={styles.statusBadge}>
                     <View style={styles.statusDot} />
                     <Text style={styles.statusText}>Protegido</Text>

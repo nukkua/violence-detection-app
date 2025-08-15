@@ -7,7 +7,6 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { useAuthBiometric } from '@/hooks/useAuthBiometric';
 import { useAnimate } from "@/hooks/useAnimate";
 import { Tabs, router, usePathname } from 'expo-router';
-import { addShortcutListener } from "react-native-siri-shortcut";
 
 function CleanTabBar() {
     return (
@@ -227,17 +226,6 @@ export default function AppLayout() {
         router.back();
     };
 
-    useEffect(() => {
-        const subscription = addShortcutListener(({ userInfo, activityType }) => {
-            console.log(
-                `User requested ${activityType} be handled, with ${userInfo} context`
-            );
-        });
-
-        return () => {
-            subscription.remove();
-        };
-    }, [])
 
     useEffect(() => {
         // Solo autenticar una vez, no en cada cambio de tab
