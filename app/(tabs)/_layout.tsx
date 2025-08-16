@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Platform, Alert, SafeAreaView, StyleSheet, Animated, View, Text, StatusBar, Dimensions, TouchableOpacity } from 'react-native';
+import { Platform, Alert, SafeAreaView, StyleSheet, Animated, View, Text, StatusBar, TouchableOpacity, Button, Switch} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { HapticTab } from '@/components/HapticTab';
 import { IconSymbol } from '@/components/ui/IconSymbol';
@@ -7,6 +7,11 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { useAuthBiometric } from '@/hooks/useAuthBiometric';
 import { useAnimate } from "@/hooks/useAnimate";
 import { Tabs, router, usePathname } from 'expo-router';
+
+import { useSpeechRecognitionEvent } from 'expo-speech-recognition';
+import { VoiceRecognitionService } from '@/services/voice-recognizition.android';
+
+
 
 function CleanTabBar() {
     return (
@@ -222,6 +227,60 @@ export default function AppLayout() {
     const fadeAnim = useAnimate(0);
     const pathname = usePathname();
 
+    const [isServiceActive, setIsServiceActive] = useState(false);
+    const [transcript, setTranscript] = useState('');
+    const [taskInfo, setTaskInfo] = useState(null);
+    const [voiceService] = useState(() => new VoiceRecognitionService());
+
+    console.log(transcript);
+
+    useEffect(() => {
+        checkTaskManagerAvailability();
+    }, []);
+
+    const checkTaskManagerAvailability = async () => {
+        const isAvailable = await TaskManager.isAvailableAsync();
+        console.log('TaskManager available:', isAvailable);
+
+        if (!isAvailable) {
+            Alert.alert(
+                'Limitación',
+                'TaskManager no está disponible. Algunas funciones pueden no funcionar en segundo plano.'
+            );
+        }
+    };
+
+    // Escuchar eventos de reconocimiento
+    useSpeechRecognitionEvent('result', (event) => {
+        const newTranscript = event.results[0]?.transcript;
+        setTranscript(newTranscript);
+    });
+
+    useSpeechRecognitionEvent('error', (event) => {
+        console.log('Voice error:', event.error, event.message);
+    });
+
+    const toggleService = async () => {
+        try {
+            if (isServiceActive) {
+                await voiceService.stopForegroundService();
+                setIsServiceActive(false);
+                setTaskInfo(null);
+            } else {
+                await voiceService.startForegroundService();
+                setIsServiceActive(true);
+
+                // Obtener información de la tarea
+                const info = await voiceService.getTaskInfo();
+                setTaskInfo(info);
+            }
+        } catch (error) {
+            Alert.alert('Error', error.message);
+        }
+    };
+
+
+
     const handleBackPress = () => {
         router.back();
     };
@@ -409,6 +468,32 @@ export default function AppLayout() {
                     />
                 </Tabs>
             </Animated.View>
+            <View style={{ flex: 1, padding: 20, justifyContent: 'center' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+                    <Text style={{ fontSize: 18, marginRight: 10 }}>
+                        Servicio de Voz: {isServiceActive ? '🟢 Activo' : '🔴 Inactivo'}
+                    </Text>
+                    <Switch value={isServiceActive} onValueChange={toggleService} />
+                </View>
+
+                <Button
+                    title={isServiceActive ? 'Detener Servicio' : 'Iniciar Servicio'}
+                    onPress={toggleService}
+                />
+
+                {taskInfo && (
+                    <View style={{ marginTop: 20, padding: 10, backgroundColor: '#e0e0e0' }}>
+                        <Text style={{ fontWeight: 'bold' }}>Info de Tarea:</Text>
+                        <Text>Tipo: {taskInfo.taskType}</Text>
+                        <Text>Nombre: {taskInfo.taskName}</Text>
+                    </View>
+                )}
+
+                <View style={{ marginTop: 30, padding: 15, backgroundColor: '#f0f0f0' }}>
+                    <Text style={{ fontSize: 16, fontWeight: 'bold' }}>Último reconocimiento:</Text>
+                    <Text style={{ marginTop: 10 }}>{transcript || 'Esperando...'}</Text>
+                </View>
+            </View>
         </View>
     );
 }
