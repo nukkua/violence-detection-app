@@ -232,7 +232,7 @@ export default function AppLayout() {
     const [taskInfo, setTaskInfo] = useState(null);
     const [voiceService] = useState(() => new VoiceRecognitionService());
 
-    console.log(transcript);
+    console.log(transcript)
 
     useEffect(() => {
         checkTaskManagerAvailability();

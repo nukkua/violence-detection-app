@@ -1,4 +1,3 @@
-// VoiceRecognitionService.js
 import * as TaskManager from 'expo-task-manager';
 import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 import * as Notifications from 'expo-notifications';
